@@ -30,13 +30,14 @@ import java.util.HashMap;
  * 流程：选图 → 涂抹 → 修复 → 拖动中线对比 → 保存
  */
 public class MainActivity extends Activity {
-    private static final int MODEL_INPUT = 512;
+    private static final int[] INPUT_SIZES = {512, 384, 256};
+    private int modelInputSize = 384;
     private static final int PAD = 200;
     private static final String MODEL_NAME = "lama_fp32.onnx";
 
     private CompareView canvas;
     private Button btnPick, btnRepair, btnSave;
-    private Button toolBrush, toolClear;
+    private Button toolBrush, toolQuality, toolClear;
     private ImageButton toolUndo, toolRedo;
     private TextView statRes, statTime;
     private ProgressBar progress;
@@ -58,6 +59,8 @@ public class MainActivity extends Activity {
         toolUndo = (ImageButton) findViewById(R.id.tool_undo);
         toolRedo = (ImageButton) findViewById(R.id.tool_redo);
         toolClear = (Button) findViewById(R.id.tool_clear);
+        toolQuality = (Button) findViewById(R.id.tool_quality);
+        toolQuality.setText("画质 " + modelInputSize);
         statRes = (TextView) findViewById(R.id.stat_res);
         statTime = (TextView) findViewById(R.id.stat_time);
         progress = (ProgressBar) findViewById(R.id.progress);
@@ -76,16 +79,34 @@ public class MainActivity extends Activity {
             try {
                 ortEnv = OrtEnvironment.getEnvironment();
                 File mf = new File(getFilesDir(), MODEL_NAME);
-                if (!mf.exists() || mf.length() < 100_000_000) {
-                    runOnUiThread(new Runnable() { public void run() { toast("首次加载模型（约 200MB）..."); }});
+                File vf = new File(getFilesDir(), "model_version");
+                String newVer = "";
+                try (InputStream vis = getAssets().open("model_version")) {
+                    byte[] vb = new byte[32]; int vn = vis.read(vb);
+                    if (vn > 0) newVer = new String(vb, 0, vn).trim();
+                }
+                String curVer = "";
+                try (java.io.FileInputStream fis = new java.io.FileInputStream(vf)) {
+                    byte[] vb = new byte[(int) vf.length()]; fis.read(vb);
+                    curVer = new String(vb).trim();
+                } catch (Exception e) { /* missing */ }
+                final boolean firstLoad = curVer.isEmpty() && !mf.exists();
+                if (!mf.exists() || !curVer.equals(newVer)) {
+                    final String msg = firstLoad ? "首次加载模型（约 200MB）..." : "更新模型（约 200MB）...";
+                    runOnUiThread(new Runnable() { public void run() { toast(msg); }});
                     try (InputStream is = getAssets().open(MODEL_NAME);
                          OutputStream os = new FileOutputStream(mf)) {
                         byte[] buf = new byte[65536];
                         int n;
                         while ((n = is.read(buf)) > 0) os.write(buf, 0, n);
                     }
+                    try (java.io.FileWriter w = new java.io.FileWriter(vf)) { w.write(newVer); }
                 }
-                session = ortEnv.createSession(mf.getAbsolutePath());
+                OrtSession.SessionOptions opts = new OrtSession.SessionOptions();
+                opts.setIntraOpNumThreads(Runtime.getRuntime().availableProcessors());
+                opts.addXnnpack(new java.util.HashMap<String, String>());
+                session = ortEnv.createSession(mf.getAbsolutePath(), opts);
+                opts.close();
                 runOnUiThread(new Runnable() { public void run() { toast("模型已就绪"); }});
             } catch (Throwable e) {
                 e.printStackTrace();
@@ -115,6 +136,15 @@ public class MainActivity extends Activity {
         }});
         toolClear.setOnClickListener(new View.OnClickListener() { public void onClick(View v) {
             canvas.resetAll();
+        }});
+        toolQuality.setOnClickListener(new View.OnClickListener() { public void onClick(View v) {
+            int idx = 0;
+            for (int i = 0; i < INPUT_SIZES.length; i++) if (INPUT_SIZES[i] == modelInputSize) { idx = i; break; }
+            idx = (idx + 1) % INPUT_SIZES.length;
+            modelInputSize = INPUT_SIZES[idx];
+            toolQuality.setText("画质 " + modelInputSize);
+            String tip = (modelInputSize == 512) ? "最清晰" : (modelInputSize == 384) ? "均衡" : "更快，质量略降";
+            toast("画质 " + modelInputSize + " · " + tip);
         }});
     }
 
@@ -184,9 +214,9 @@ public class MainActivity extends Activity {
                         cropPx[y * cropW + x] = px[(y + y1) * W + (x + x1)];
                 Bitmap cropBmp = Bitmap.createBitmap(cropW, cropH, Bitmap.Config.ARGB_8888);
                 cropBmp.setPixels(cropPx, 0, cropW, 0, 0, cropW, cropH);
-                Bitmap img512 = Bitmap.createScaledBitmap(cropBmp, MODEL_INPUT, MODEL_INPUT, true);
-                int[] ip512 = new int[MODEL_INPUT * MODEL_INPUT];
-                img512.getPixels(ip512, 0, MODEL_INPUT, 0, 0, MODEL_INPUT, MODEL_INPUT);
+                Bitmap img512 = Bitmap.createScaledBitmap(cropBmp, modelInputSize, modelInputSize, true);
+                int[] ip512 = new int[modelInputSize * modelInputSize];
+                img512.getPixels(ip512, 0, modelInputSize, 0, 0, modelInputSize, modelInputSize);
 
                 int[] mp = new int[cropW * cropH];
                 for (int y = 0; y < cropH; y++)
@@ -194,19 +224,19 @@ public class MainActivity extends Activity {
                         mp[y * cropW + x] = drawn[(y + y1) * W + (x + x1)] > 10 ? 0xFFFFFFFF : 0xFF000000;
                 Bitmap maskBmp = Bitmap.createBitmap(cropW, cropH, Bitmap.Config.ARGB_8888);
                 maskBmp.setPixels(mp, 0, cropW, 0, 0, cropW, cropH);
-                Bitmap mask512 = Bitmap.createScaledBitmap(maskBmp, MODEL_INPUT, MODEL_INPUT, true);
-                int[] mp512 = new int[MODEL_INPUT * MODEL_INPUT];
-                mask512.getPixels(mp512, 0, MODEL_INPUT, 0, 0, MODEL_INPUT, MODEL_INPUT);
+                Bitmap mask512 = Bitmap.createScaledBitmap(maskBmp, modelInputSize, modelInputSize, true);
+                int[] mp512 = new int[modelInputSize * modelInputSize];
+                mask512.getPixels(mp512, 0, modelInputSize, 0, 0, modelInputSize, modelInputSize);
 
-                float[] imgF = new float[3 * MODEL_INPUT * MODEL_INPUT];
-                float[] mskF = new float[MODEL_INPUT * MODEL_INPUT];
-                for (int y = 0; y < MODEL_INPUT; y++) {
-                    for (int x = 0; x < MODEL_INPUT; x++) {
-                        int p = ip512[y * MODEL_INPUT + x];
-                        int off = y * MODEL_INPUT + x;
+                float[] imgF = new float[3 * modelInputSize * modelInputSize];
+                float[] mskF = new float[modelInputSize * modelInputSize];
+                for (int y = 0; y < modelInputSize; y++) {
+                    for (int x = 0; x < modelInputSize; x++) {
+                        int p = ip512[y * modelInputSize + x];
+                        int off = y * modelInputSize + x;
                         imgF[off] = ((p >> 16) & 0xFF) / 255f;
-                        imgF[MODEL_INPUT * MODEL_INPUT + off] = ((p >> 8) & 0xFF) / 255f;
-                        imgF[2 * MODEL_INPUT * MODEL_INPUT + off] = (p & 0xFF) / 255f;
+                        imgF[modelInputSize * modelInputSize + off] = ((p >> 8) & 0xFF) / 255f;
+                        imgF[2 * modelInputSize * modelInputSize + off] = (p & 0xFF) / 255f;
                         int m = mp512[off] & 0xFF;
                         mskF[off] = m > 10 ? 1f : 0f;
                     }
@@ -220,9 +250,9 @@ public class MainActivity extends Activity {
                 mskBuf.put(mskF); mskBuf.rewind();
 
                 OnnxTensor imgTensor = OnnxTensor.createTensor(ortEnv, imgBuf,
-                        new long[]{1, 3, MODEL_INPUT, MODEL_INPUT});
+                        new long[]{1, 3, modelInputSize, modelInputSize});
                 OnnxTensor maskTensor = OnnxTensor.createTensor(ortEnv, mskBuf,
-                        new long[]{1, 1, MODEL_INPUT, MODEL_INPUT});
+                        new long[]{1, 1, modelInputSize, modelInputSize});
 
                 HashMap<String, OnnxTensor> inputs = new HashMap<>();
                 inputs.put("image", imgTensor);
@@ -232,13 +262,13 @@ public class MainActivity extends Activity {
                 Object outObj = results.get(0).getValue();
                 imgTensor.close(); maskTensor.close();
 
-                float[] outF = new float[3 * MODEL_INPUT * MODEL_INPUT];
+                float[] outF = new float[3 * modelInputSize * modelInputSize];
                 if (outObj instanceof float[][][][]) {
                     float[][][][] a = (float[][][][]) outObj;
                     for (int c = 0; c < 3; c++)
-                        for (int y = 0; y < MODEL_INPUT; y++)
-                            for (int x = 0; x < MODEL_INPUT; x++)
-                                outF[c * MODEL_INPUT * MODEL_INPUT + y * MODEL_INPUT + x] = a[0][c][y][x];
+                        for (int y = 0; y < modelInputSize; y++)
+                            for (int x = 0; x < modelInputSize; x++)
+                                outF[c * modelInputSize * modelInputSize + y * modelInputSize + x] = a[0][c][y][x];
                 } else if (outObj instanceof FloatBuffer) {
                     FloatBuffer bb = (FloatBuffer) outObj;
                     bb.rewind(); bb.get(outF);
@@ -247,18 +277,18 @@ public class MainActivity extends Activity {
                     bb.rewind(); bb.asFloatBuffer().get(outF);
                 }
 
-                int[] out512 = new int[MODEL_INPUT * MODEL_INPUT];
-                for (int y = 0; y < MODEL_INPUT; y++) {
-                    for (int x = 0; x < MODEL_INPUT; x++) {
-                        int off = y * MODEL_INPUT + x;
+                int[] out512 = new int[modelInputSize * modelInputSize];
+                for (int y = 0; y < modelInputSize; y++) {
+                    for (int x = 0; x < modelInputSize; x++) {
+                        int off = y * modelInputSize + x;
                         int r = clamp((int) outF[off]);
-                        int g = clamp((int) outF[MODEL_INPUT * MODEL_INPUT + off]);
-                        int b = clamp((int) outF[2 * MODEL_INPUT * MODEL_INPUT + off]);
+                        int g = clamp((int) outF[modelInputSize * modelInputSize + off]);
+                        int b = clamp((int) outF[2 * modelInputSize * modelInputSize + off]);
                         out512[off] = 0xFF000000 | (r << 16) | (g << 8) | b;
                     }
                 }
-                Bitmap outBmp512 = Bitmap.createBitmap(MODEL_INPUT, MODEL_INPUT, Bitmap.Config.ARGB_8888);
-                outBmp512.setPixels(out512, 0, MODEL_INPUT, 0, 0, MODEL_INPUT, MODEL_INPUT);
+                Bitmap outBmp512 = Bitmap.createBitmap(modelInputSize, modelInputSize, Bitmap.Config.ARGB_8888);
+                outBmp512.setPixels(out512, 0, modelInputSize, 0, 0, modelInputSize, modelInputSize);
                 Bitmap outFull = Bitmap.createScaledBitmap(outBmp512, cropW, cropH, true);
 
                 int[] maskFullPx = new int[cropW * cropH];

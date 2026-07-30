@@ -7,6 +7,7 @@
     <string name="save">保存</string>
     <string name="hint">涂抹后点修复 · 拖动中线对比 · 回退/向前调整涂抹</string>
     <string name="brush">笔刷 64</string>
+    <string name="quality">画质 384</string>
     <string name="undo">回退</string>
     <string name="redo">向前</string>
     <string name="clear">清空</string>

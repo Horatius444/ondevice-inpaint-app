@@ -1,79 +1,122 @@
-# Inpaint Pro — 端侧 AI 去水印 / 涂抹区域修复（Android）
+# Inpaint Pro 🪄 — On-Device AI Watermark / Object Removal (Android)
 
-纯端侧、不联网、零云依赖的 Android 图像修复 App。用手指涂抹想消除的水印 / logo / 路人 / 涂抹痕迹，
-本地运行 **LaMa（Big LaMa, WACV 2022）** 修复模型，逐像素补全背景。
+<p align="center">
+  <img src="docs/inpaint_v4_final.png" alt="result screenshot" width="320"/>
+</p>
 
-- 模型推理：**ONNX Runtime Mobile 1.18.0**（`arm64-v8a`），直接吃官方 ONNX，零转换
-- 模型：**LaMa (big-lama)** — 端侧 / 服务器去水印事实标准（傅里叶卷积，擅长结构化内容补全）
-- 最低系统：**Android 7.0 (API 24)**，目标 **API 34**
-- 构建方式：手工构建链（aapt2 → javac → d8 → zipalign → apksigner），**绕开 gradle**
+<p align="center">
+  <img alt="Platform" src="https://img.shields.io/badge/Platform-Android-3DDC84"/>
+  <img alt="Model" src="https://img.shields.io/badge/Model-LaMa%20(WACV%202022)-ff69b4"/>
+  <img alt="Inference" src="https://img.shields.io/badge/Inference-ONNX%20Runtime%201.18-9cf"/>
+  <img alt="License" src="https://img.shields.io/badge/License-MIT-green"/>
+</p>
 
-## 功能
+**Inpaint Pro** is a fully on-device Android app that removes watermarks, logos,
+passers-by, and unwanted objects from photos — **no cloud, no network, zero
+privacy leakage**. You brush over the area to erase; a local **LaMa** inpainting
+model reconstructs the background pixel-by-pixel.
 
-| 能力 | 说明 |
+---
+
+## ✨ Features
+
+| Feature | Description |
 |---|---|
-| 选图 | 从相册 / 文件选一张图 |
-| 涂抹标记 | 手指在画布上涂要消除的区域（白色半透叠加）；笔刷 3 档：64 / 100 / 150 px |
-| 修复 | 跑 LaMa：自动裁剪涂抹包围盒（外扩 200px 取上下文）→ resize 512×512 → 推理 → 羽化混合嵌回原图 |
-| 拖拽对比 | 修复后进入对比模式，**拖动中间圆手柄**左右扫，实时对比原图 vs 修复结果 |
-| 回退 / 向前 | 按笔迹逐步撤销 / 重做涂抹（↶ / ↷ 两个独立图标） |
-| 清空 | 一键重置所有修复效果，回到原始图片 |
-| 保存 | 结果存入系统相册 `Pictures/OnDeviceInpaint/` |
+| 🖼️ Pick image | Open any photo from gallery / file picker |
+| 🖌️ Brush mask | Paint the region to remove with a translucent white overlay; **3 brush sizes**: 64 / 100 / 150 px |
+| ⚡ One-tap repair | Runs LaMa: auto-crops the mask bounding box (+200px context) → resizes → infers → feather-blends back into the original |
+| 🔍 Drag-to-compare | After repair, **drag the center handle** left/right to compare original vs. result in real time |
+| ↶ ↷ Undo / Redo | Step through brush strokes independently (two dedicated icons) |
+| 🧹 Clear | One tap resets all repairs back to the original image |
+| 💾 Save | Export to system gallery `Pictures/OnDeviceInpaint/` at **full original resolution** (no quality loss) |
+| 🎚️ Quality tiers | Switch internal inference resolution **512 / 384 / 256** to trade speed vs. detail |
 
-## 目录结构
+> **Note on "Quality"**: this only controls the *internal* resolution LaMa uses to
+> fill the erased patch. The exported image always keeps the **original
+> resolution** — untouched pixels are preserved 1:1.
+
+## 🚀 Performance
+
+Inference runs on CPU via ONNX Runtime (XNNPACK EP + all cores). Measured on a
+Huawei BRA-AL00 / EMUI 14.2 with a 2880×1455 source image:
+
+| Quality tier | Internal size | Time |
+|---|---|---|
+| 512 (best detail) | 512×512 | ~7–8 s |
+| 384 (balanced, default) | 384×384 | ~4 s |
+| 256 (fastest) | 256×256 | ~2 s |
+
+## 🧱 Tech Stack
+
+- **Model**: [LaMa (big-lama)](https://github.com/saic-mdal/lama) — Fourier convolutions, SOTA for structured inpainting
+- **Inference**: ONNX Runtime Mobile **1.18.0** (`arm64-v8a`), consumes the official ONNX directly — no conversion
+- **Min OS**: Android 7.0 (API 24) · Target API 34
+- **Build**: manual toolchain (`aapt2 → javac → d8 → zipalign → apksigner`) — bypasses Gradle (legacy build environment)
+
+## 📂 Project Structure
 
 ```
 ondevice-inpaint-app/
 ├── app/src/main/
-│   ├── AndroidManifest.xml        # package=com.example.inpaint, 无 androidx
-│   ├── assets/                    # lama_fp32.onnx（构建时自动下载，不进 git）
+│   ├── AndroidManifest.xml        # package=com.example.inpaint, no androidx
+│   ├── assets/                    # model_version sentinel (onnx auto-downloaded, not in git)
 │   ├── java/com/example/inpaint/
-│   │   ├── MainActivity.java      # 模型加载 + 涂抹 + 推理 + 保存
-│   │   ├── CompareView.java       # 双模画布（涂抹 / 拖拽对比）+ 笔迹历史
-│   │   └── MediaStoreSaver.java   # 保存到系统相册
-│   └── res/                       # 布局 / 颜色 / 字符串 / 矢量图标(drawable)
-├── build_manual.py               # 手工构建脚本（见下）
-└── docs/                         # 效果截图
+│   │   ├── MainActivity.java      # model load + mask + inference + save
+│   │   ├── CompareView.java       # dual-mode canvas (paint / drag-compare) + stroke history
+│   │   └── MediaStoreSaver.java   # save to system gallery
+│   └── res/                       # layouts / colors / strings / vector icons
+├── build_manual.py               # manual build script (see below)
+├── FLUTTER_PORT_PLAN.md          # roadmap: Flutter cross-platform port
+└── docs/                         # screenshots
 ```
 
-## 构建
+## 🛠 Build
 
-### 前置条件（本机已具备）
-- Android SDK，含 `build-tools/34.0.0`（aapt2 / d8 / zipalign / apksigner）与 `platforms/android-34`
+### Prerequisites (present on dev machine)
+- Android SDK with `build-tools/34.0.0` (`aapt2` / `d8` / `zipalign` / `apksigner`) and `platforms/android-34`
 - JDK 17
-- `onnxruntime-android 1.18.0` 的 AAR，解压出 `classes.jar` 与 `jni/arm64-v8a/*.so`
-  - 默认从本机 gradle 缓存读取；也可用环境变量覆盖：
-    - `ORT_AAR`：AAR 完整路径
-    - `ORT_EXTRACT`：AAR 解压目录（含 `classes.jar` 与 `jni/`）
-  - 解压方法：`unzip onnxruntime-android-1.18.0.aar -d $ORT_EXTRACT`
-- Android SDK 路径可用 `ANDROID_SDK_ROOT` / `ANDROID_HOME` 指定（默认 `D:/Android/Sdk`）
+- `onnxruntime-android 1.18.0` AAR, unzipped to `classes.jar` + `jni/arm64-v8a/*.so`
+  - Read from local Gradle cache by default; override via env vars:
+    - `ORT_AAR` — full path to the AAR
+    - `ORT_EXTRACT` — unzip dir (containing `classes.jar` and `jni/`)
+  - Unzip: `unzip onnxruntime-android-1.18.0.aar -d $ORT_EXTRACT`
+- Android SDK path via `ANDROID_SDK_ROOT` / `ANDROID_HOME` (default `D:/Android/Sdk`)
 
-### 步骤
+### Steps
 ```bash
 python build_manual.py
 ```
-脚本会：
-1. 若 `app/src/main/assets/lama_fp32.onnx` 缺失，自动从 HuggingFace 下载（约 199MB）
-2. aapt2 编译/链接资源 → javac 编译 Java → d8 打 dex → 合成 assets + .so → zipalign → apksigner 签名
-3. 产物：`build_manual/app-debug.apk`
+The script will:
+1. Auto-download `app/src/main/assets/lama_fp32.onnx` from HuggingFace (~199 MB) if missing
+2. `aapt2` compile/link → `javac` → `d8` dex → package assets + `.so` → `zipalign` → `apksigner`
+3. Output: `build_manual/app-debug.apk`
 
-> 注：模型权重（199MB）超过 GitHub 单文件 100MB 上限，不纳入版本库。重新构建时脚本会自动拉取。
+> Model weights (199 MB) exceed GitHub's 100 MB file limit and are **not** tracked.
+> The build script fetches them automatically on rebuild.
 
-## 安装 & 测试
+## 📲 Install & Try
 
 ```bash
 adb install -r build_manual/app-debug.apk
 adb shell am start -n com.example.inpaint/.MainActivity
 ```
-1. 点「选图」选一张带水印的照片
-2. 手指涂抹水印区域（白色半透叠加）
-3. 点「修复」→ 首次会先把模型从 assets 拷到私有目录（约 1–2 秒），之后秒级出结果
-4. **拖动中间圆手柄**对比原图 / 修复结果
-5. 满意后点「保存」存入相册
+1. Tap **Pick** to choose a photo with a watermark
+2. Brush over the watermark area (translucent white overlay)
+3. Tap **Repair** — first run copies the model to private storage (~1–2 s), then results appear in seconds
+4. **Drag the center handle** to compare original / repaired
+5. Tap **Save** to store the result in your gallery
 
-## 已知限制 & 改进方向
+## 🗺️ Roadmap
 
-- **速度**：当前 ORT CPU 推理，移动端约 1–3s（取决于涂抹区域 / 机型）。可换 NCNN + INT8 量化提速。
-- **精度**：LaMa 对大块、连续水印最好；极细字体 / 复杂纹理可能留轻微残影。可换 MAT / ZITS++ 权重。
-- **盲去水印**：当前需手动涂抹（方法 1）。全自动不涂抹的去水印是另一条路线（WDNet / MorphoMod），后续可加「自动模式」开关。
-- **样式**：未引入 androidx（受构建环境限制），使用平台 `Theme.DeviceDefault`；视觉偏原生安卓。
+- [x] On-device LaMa inference with dynamic input size (256/384/512)
+- [x] Drag-to-compare, undo/redo, clear, quality tiers
+- [ ] **Flutter cross-platform port** (Android + iOS) — see [`FLUTTER_PORT_PLAN.md`](FLUTTER_PORT_PLAN.md)
+- [ ] INT8 quantization for ~2× faster inference
+- [ ] Auto (no-brush) watermark removal mode
+
+## 📄 License
+
+[MIT](LICENSE) © 2026 Inpaint Pro contributors.
+
+> The bundled LaMa model weights are released by their original authors under
+> their respective license; this repo ships code only, weights are downloaded at build time.
