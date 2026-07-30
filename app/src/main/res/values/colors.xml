@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg_dark_green">#0E3B2D</color>
+    <color name="canvas_bg">#08301F</color>
+    <color name="accent">#3DAE7A</color>
+    <color name="accent_dark">#2E7D55</color>
+    <color name="text_status">#A8D5BA</color>
+    <color name="text_title">#FFFFFF</color>
+    <color name="text_stat">#A8D5BA</color>
+    <color name="text_hint">#6FAF8F</color>
+    <color name="text_on_accent">#FFFFFF</color>
+    <color name="hint_divider">#3E6E55</color>
+</resources>

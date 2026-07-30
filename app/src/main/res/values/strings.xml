@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">端侧去水印</string>
+    <string name="app_title">Inpaint Pro</string>
+    <string name="pick">选图</string>
+    <string name="repair">修复</string>
+    <string name="save">保存</string>
+    <string name="hint">涂抹后点修复 · 拖动中线对比 · 回退/向前调整涂抹</string>
+    <string name="brush">笔刷 64</string>
+    <string name="undo">回退</string>
+    <string name="redo">向前</string>
+    <string name="clear">清空</string>
+</resources>

@@ -1,0 +1,30 @@
+# ===== Model weights (too large for git; downloaded separately) =====
+*.onnx
+*.pt
+*.pth
+*.bin
+
+# ===== Built artifacts & build intermediates =====
+build_manual/
+*.apk
+*.apk.*
+*.class
+*.dex
+/build/
+/app/build/
+/.gradle/
+
+# ===== Android / IDE / OS =====
+*.iml
+.idea/
+.DS_Store
+Thumbs.db
+captures/
+
+# ===== WorkBuddy internal memory (not project source) =====
+.workbuddy/
+
+# ===== Local temp =====
+/tmp/
+__pycache__/
+*.pyc

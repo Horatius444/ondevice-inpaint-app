@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_dark_green"
+    android:paddingTop="14dp"
+    android:paddingBottom="18dp"
+    android:paddingStart="20dp"
+    android:paddingEnd="20dp">
+
+    <!-- status row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+        <TextView
+            android:id="@+id/status_time"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="9:41"
+            android:textColor="@color/text_status"
+            android:textSize="13sp"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="● ●"
+            android:textColor="@color/text_status"
+            android:textSize="10sp"
+            android:letterSpacing="1.5"/>
+    </LinearLayout>
+
+    <!-- title -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/app_title"
+        android:textColor="@color/text_title"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="14dp"/>
+
+    <!-- canvas -->
+    <com.example.inpaint.CompareView
+        android:id="@+id/canvas"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="@drawable/canvas_bg"/>
+
+    <!-- stats row: resolution + time (no mask) -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="16dp">
+        <TextView
+            android:id="@+id/stat_res"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="—"
+            android:textColor="@color/text_stat"
+            android:textSize="13sp"/>
+        <TextView
+            android:id="@+id/stat_time"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="end"
+            android:text="—"
+            android:textColor="@color/text_stat"
+            android:textSize="13sp"/>
+    </LinearLayout>
+
+    <!-- progress bar (shown during inference) -->
+    <ProgressBar
+        android:id="@+id/progress"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="6dp"
+        android:layout_marginTop="10dp"
+        android:indeterminate="true"
+        android:visibility="invisible"/>
+
+    <!-- buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="18dp"
+        android:gravity="center">
+        <Button
+            android:id="@+id/btn_pick"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:text="@string/pick"
+            android:textColor="@color/text_on_accent"
+            android:textSize="15sp"
+            android:background="@drawable/btn_green"/>
+        <Button
+            android:id="@+id/btn_repair"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:text="@string/repair"
+            android:textColor="@color/text_on_accent"
+            android:textSize="15sp"
+            android:background="@drawable/btn_green"/>
+        <Button
+            android:id="@+id/btn_save"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:text="@string/save"
+            android:textColor="@color/text_on_accent"
+            android:textSize="15sp"
+            android:background="@drawable/btn_green"/>
+    </LinearLayout>
+
+    <!-- hint -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/hint"
+        android:textColor="@color/text_hint"
+        android:textSize="13sp"
+        android:layout_marginTop="18dp"/>
+
+    <!-- bottom tools -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="32dp"
+        android:layout_gravity="center_horizontal"
+        android:gravity="center_vertical">
+        <Button
+            android:id="@+id/tool_brush"
+            style="?android:attr/borderlessButtonStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/brush"
+            android:textColor="@color/text_hint"
+            android:textSize="13sp"
+            android:minWidth="0dp"
+            android:paddingStart="0dp"
+            android:paddingEnd="0dp"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=" · "
+            android:textColor="@color/hint_divider"
+            android:textSize="13sp"/>
+        <ImageButton
+            android:id="@+id/tool_undo"
+            style="?android:attr/borderlessButtonStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/ic_undo"
+            android:contentDescription="@string/undo"
+            android:background="?android:attr/selectableItemBackground"
+            android:minWidth="0dp"
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=" · "
+            android:textColor="@color/hint_divider"
+            android:textSize="13sp"/>
+        <ImageButton
+            android:id="@+id/tool_redo"
+            style="?android:attr/borderlessButtonStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/ic_redo"
+            android:contentDescription="@string/redo"
+            android:background="?android:attr/selectableItemBackground"
+            android:minWidth="0dp"
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=" · "
+            android:textColor="@color/hint_divider"
+            android:textSize="13sp"/>
+        <Button
+            android:id="@+id/tool_clear"
+            style="?android:attr/borderlessButtonStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/clear"
+            android:textColor="@color/text_hint"
+            android:textSize="13sp"
+            android:minWidth="0dp"
+            android:paddingStart="0dp"
+            android:paddingEnd="0dp"/>
+    </LinearLayout>
+</LinearLayout>
