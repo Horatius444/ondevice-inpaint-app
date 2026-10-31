@@ -26,7 +26,10 @@ jobs:
           python-version: '3.x'
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
+        with:
+          accept-android-sdk-licenses: 'true'
+          log-accepted-android-sdk-licenses: 'false'
 
       - name: Install Android SDK components
         shell: pwsh
